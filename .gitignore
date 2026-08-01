@@ -1,0 +1,14 @@
+# ไฟล์ซ่อนตัวแปรระบบ
+.env
+
+# ไฟล์ Executable ที่ได้จากการ Build ของ Go
+/bin
+/tmp
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# โฟลเดอร์ของ OS
+.DS_Store
