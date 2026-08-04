@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  # 1. ฐานข้อมูล PostgreSQL
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: my_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: steel_factory_db
+    ports:
+      - "5432:5432" # แมปพอร์ตให้ Go ต่อเข้ามาได้
+    volumes:
+      - pgdata:/var/lib/postgresql/data # ป้องกันข้อมูลหายเวลาปิด Docker
+
+  # 2. เครื่องมือจัดการฐานข้อมูล pgAdmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: my_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: secretpassword
+    ports:
+      - "5050:80" # เข้าเว็บ pgAdmin ผ่านพอร์ต 5050
+    depends_on:
+      - postgres-db # บังคับให้รัน DB ก่อนค่อยรัน pgAdmin
+
+volumes:
+  pgdata: # ประกาศ Volume สำหรับเก็บข้อมูล

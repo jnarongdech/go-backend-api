@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "internal/repository/sql/schema.sql" # ไฟล์สำหรับสร้างตาราง
+    queries: "internal/repository/sql/query.sql" # ไฟล์สำหรับเขียนคำสั่ง Query (CRUD)
+    gen:
+      go:
+        package: "repository" # ชื่อ package ของโค้ด Go ที่จะถูกสร้าง
+        out: "internal/repository" # โฟลเดอร์ปลายทางที่โค้ด Go จะไปอยู่
+        emit_json_tags: true # ให้สร้าง JSON Tags ใน Struct อัตโนมัติ (มีประโยชน์ตอนส่ง API)
+        emit_pointers_for_null_types: true # อนุญาตให้เป็น null ให้กลายเป็น pointer (*string, *int)
+        emit_prepared_queries: false # ปิดไว้ก่อนเพื่อความเรียบง่าย
