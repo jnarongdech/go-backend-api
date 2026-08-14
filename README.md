@@ -36,6 +36,7 @@ A robust backend RESTful API built for managing inventory, products, and orders.
    DATABASE_URL=postgres://user:password@host:port/dbname
 3. ติดตั้ง Dependencies และรันเซิร์ฟเวอร์:
    go mod tidy
+   swag init -g cmd/api/main.go -d . --parseInternal
    go run cmd/api/main.go
    เซิร์ฟเวอร์จะรันที่พอร์ต
    > > http://localhost:8080
@@ -58,5 +59,6 @@ A robust backend RESTful API built for managing inventory, products, and orders.
 ### Author
 
 [Narongdech Petchtra]
-Github: jnarongdech
-LinkedIn: www.linkedin.com/in/jnarongdech78
+
+- Github: jnarongdech
+- LinkedIn: www.linkedin.com/in/jnarongdech78
