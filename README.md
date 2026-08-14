@@ -41,11 +41,11 @@ A robust backend RESTful API built for managing inventory, products, and orders.
    เซิร์ฟเวอร์จะรันที่พอร์ต
    > > http://localhost:8080
 
-### API Documentation
+## 📚 API Documentation (Live)
 
-เมื่อรันเซิร์ฟเวอร์เรียบร้อยแล้ว สามารถเข้าดูเอกสารและทดสอบ API ได้ที่:
+สามารถทดลองยิง API ของจริงบนระบบ Cloud ได้ที่นี่:
 
-> > http://localhost:8080/swagger/index.html
+> > https://steel-factory-api.onrender.com/swagger/index.html
 
 ### Project Structure
 
