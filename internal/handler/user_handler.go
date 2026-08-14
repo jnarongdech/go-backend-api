@@ -1,15 +1,32 @@
 package handler
 
 import (
+	"errors"
+	"net/mail"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/jnarongdech/go-backend-api/internal/service"
+	constants "github.com/jnarongdech/go-backend-api/pkg/consts"
+	"github.com/jnarongdech/go-backend-api/pkg/errs"
+	"github.com/jnarongdech/go-backend-api/pkg/response"
 )
 
 // สร้าง Struct เพื่อรับ JSON จากฝั่งผู้ใช้งาน
 type CreateUserRequest struct {
-	ID       string `json:"id"`
-	Email    string `json:"email"`
-	FullName string `json:"full_name"`
+	Email    string `json:"email" validate:"required,email"`
+	FullName string `json:"full_name" validate:"required"`
+}
+
+// สำหรับ แก้ไขผู้ใช้งาน (สังเกตว่าเปลี่ยนเป็น Pointer *string เพื่อให้ส่งค่าว่าง หรือไม่ส่งมาก็ได้)
+type UpdateUserRequest struct {
+	ID       string `json:"id" validate:"required"`
+	Email    string `json:"email" validate:"required"`
+	FullName string `json:"full_name" validate:"required"`
+}
+
+type SoftDeleteRequest struct {
+	ID string `json:"id" validate:"required,uuid"`
 }
 
 type UserHandler struct {
@@ -43,28 +60,100 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 	})
 }
 
+// @Summary Create new data...
+// @Tags Users
+// @Accept json
+// @Param request body CreateUserRequest true "Data to create"
+// @Success 201 {object} map[string]interface{}
+// @Router /api/v1/users [post]
 func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
-	// 1. สร้างตัวแปรมารอรับข้อมูล
+	// สร้างตัวแปรมารอรับข้อมูล
 	var req CreateUserRequest
 
-	// 2. ใช้ BodyParser เพื่อแกะ JSON แปลงเข้า Struct
+	// ใช้ BodyParser เพื่อแกะ JSON แปลงเข้า Struct
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "รูปแบบข้อมูลไม่ถูกต้อง",
+			"status": 400,
+			"error":  "Invalid email format.",
 		})
 	}
 
-	// 3. ส่งข้อมูลที่แกะแล้ว ไปให้ Service จัดการต่อ
-	user, err := h.userService.CreateUser(c.Context(), req.ID, req.Email, req.FullName)
+	// validator email
+	_, err := mail.ParseAddress(req.Email)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status": 400,
+			"error":  "Invalid email format.",
+		})
+	}
+
+	// ส่งข้อมูลที่แกะแล้ว ไปให้ Service จัดการต่อ
+	user, err := h.userService.CreateUser(c.Context(), req.Email, req.FullName)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
+			"status": 400,
+			"error":  err.Error(),
 		})
 	}
 
-	// 4. ถ้าสำเร็จ ส่งข้อมูลผู้ใช้งานใหม่กลับไปให้ Frontend
+	// ถ้าสำเร็จ ส่งข้อมูลผู้ใช้งานใหม่กลับไปให้ Frontend
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message": "สร้างผู้ใช้งานสำเร็จ!",
+		"status":  200,
+		"success": true,
+		"message": "Created Successfully!",
 		"data":    user,
 	})
+}
+
+// @Summary Update data...
+// @Tags Users
+// @Accept json
+// @Param request body UpdateUserRequest true "New data to update"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/users [patch]
+func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
+	var req UpdateUserRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.ErrorResponse(c, errors.New(""))
+	}
+
+	// validator email
+	_, err := mail.ParseAddress(req.Email)
+	if err != nil {
+		return response.ErrorResponse(c, errs.NewBadRequest("Invalid email format: ", err))
+	}
+
+	user, errUpdate := h.userService.UpdateUser(c.Context(), req.ID, req.Email, req.FullName)
+	if err != nil {
+		return response.ErrorResponse(c, errs.NewInternal("Unable to update user: ", errUpdate))
+	}
+
+	return response.SuccessResponse(c, fiber.StatusOK, "Updated Successfully!", user)
+}
+
+// @Summary Delete data...
+// @Tags Users
+// @Param request body SoftDeleteRequest true "Soft delete data to disabled user"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/users [delete]
+func (h *UserHandler) SoftDeleteUser(c *fiber.Ctx) error {
+	var req SoftDeleteRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.ErrorResponse(c, errs.NewBadRequest(constants.ErrInvalidJSONFormat, err))
+	}
+
+	if req.ID == "" {
+		return response.ErrorResponse(c, errs.NewBadRequest("ID cannot be empty:", nil))
+	}
+
+	if _, err := uuid.Parse(req.ID); err != nil {
+		return response.ErrorResponse(c, errs.NewBadRequest("Invalid ID format (UUID required).", nil))
+	}
+
+	errSoftDel := h.userService.SoftDeleteUser(c.Context(), req.ID)
+	if errSoftDel != nil {
+		return response.ErrorResponse(c, errs.NewInternal("Unable to delete user: ", errSoftDel))
+	}
+
+	return response.SuccessResponse(c, fiber.StatusOK, "Disabled Successfully!", nil)
 }

@@ -46,30 +46,48 @@ func (s *UserService) GetUserByID(ctx context.Context, id string) (repository.Us
 
 		// ถ้าเป็น Error แบบอื่นๆ (เช่น Database ล่ม, เน็ตหลุด) เราจะไม่บอกสาเหตุจริงๆ ให้ผู้ใช้รู้
 		// แต่จะส่งข้อความกลางๆ กลับไปแทนเพื่อความปลอดภัย
-		return repository.User{}, errors.New("เกิดข้อผิดพลาดขัดข้องภายในระบบ โปรดลองใหม่อีกครั้ง")
+		return repository.User{}, errors.New("เกิดข้อผิดพลาดขัดข้อง โปรดลองใหม่อีกครั้ง")
 	}
 
 	return user, nil
 }
 
-func (s *UserService) CreateUser(ctx context.Context, id string, email string, fullName string) (repository.User, error) {
-	// กฎข้อที่ 1: ต้องใส่อีเมลเสมอ
-	if email == "" {
-		return repository.User{}, errors.New("กรุณาระบุอีเมล")
+func (s *UserService) CreateUser(ctx context.Context, email string, fullName string) (repository.User, error) {
+	if email == "" || fullName == "" {
+		return repository.User{}, errors.New("email and fullname cannot an empty")
 	}
-
-	// จัดการกับตัวแปรที่อนุญาตให้เป็น Null ได้ (full_name)
-	var fullNamePtr *string
-	if fullName != "" {
-		fullNamePtr = &fullName // ถ้ามีคนกรอกชื่อมา ให้ชี้ Pointer ไปที่ค่านั้น
-	}
-
 	// ส่งข้อมูลไปให้ Repository จัดการ
-	user, err := s.userRepo.CreateUser(ctx, id, email, fullNamePtr)
+	user, err := s.userRepo.CreateUser(ctx, email, fullName)
 	if err != nil {
 		log.Printf("[ERROR] CreateUser failed: %v", err)
-		return repository.User{}, errors.New("ไม่สามารถสร้างผู้ใช้งานได้ในขณะนี้")
+		return repository.User{}, errors.New("ไม่สามารถสร้างข้อมูลผู้ใช้งานได้")
+	}
+	return user, nil
+}
+
+func (s *UserService) UpdateUser(ctx context.Context, id string, email string, fullName string) (repository.User, error) {
+	if id == "" || email == "" || fullName == "" {
+		return repository.User{}, errors.New("id, email and fullname cannot be empty")
+	}
+
+	user, err := s.userRepo.UpdateUser(ctx, id, email, fullName)
+	if err != nil {
+		log.Printf("[Error] UpdateUser failed: %v", err)
+		return repository.User{}, errors.New("Unable to edit user data")
 	}
 
 	return user, nil
+}
+
+func (s *UserService) SoftDeleteUser(ctx context.Context, id string) error {
+	if id == "" {
+		return errors.New("id cannot be empty")
+	}
+	err := s.userRepo.SoftDeleteUser(ctx, id)
+	if err != nil {
+		log.Printf("[Error] SoftDeleteUser failed: %v", err)
+		return errors.New("Unable disable user data")
+	}
+
+	return nil
 }

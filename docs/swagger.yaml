@@ -1,0 +1,373 @@
+basePath: /
+definitions:
+  dto.CreateCustomerRequest:
+    properties:
+      City:
+        type: string
+      address:
+        type: string
+      company_name:
+        type: string
+      country:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      postal_code:
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  dto.CreateOrderItemsRequest:
+    properties:
+      order_id:
+        type: string
+      price_per_unit:
+        type: number
+      product_id:
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - order_id
+    - price_per_unit
+    - product_id
+    - quantity
+    type: object
+  dto.CreateOrderRequest:
+    properties:
+      actual_completion_date:
+        type: string
+      customer_id:
+        type: string
+      expected_completion_date:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/dto.CreateOrderItemsRequest'
+        minItems: 1
+        type: array
+      notes:
+        type: string
+      order_date:
+        type: string
+      order_type:
+        enum:
+        - pre_order
+        - stock
+        type: string
+      status:
+        enum:
+        - draft
+        - pending_payment
+        - paid
+        - in_production
+        - production_complete
+        - ready_to_ship
+        - shipped
+        - delivered
+        - cancelled
+        type: string
+      total_price:
+        type: number
+    required:
+    - customer_id
+    - items
+    - order_type
+    type: object
+  dto.CreateProductRequest:
+    properties:
+      base_price:
+        type: string
+      category:
+        type: string
+      customization_fields:
+        type: object
+      description:
+        type: string
+      is_customizable:
+        type: boolean
+      name:
+        type: string
+    type: object
+  dto.UpdateCustomerRequest:
+    properties:
+      City:
+        type: string
+      address:
+        type: string
+      company_name:
+        type: string
+      country:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      postal_code:
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  handler.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+    required:
+    - email
+    - full_name
+    type: object
+  handler.SoftDeleteRequest:
+    properties:
+      id:
+        type: string
+    required:
+    - id
+    type: object
+  handler.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+    required:
+    - email
+    - full_name
+    - id
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: ระบบจัดการ API สำหรับโรงงาน STEEL-FACTORY
+  title: GO-BACKEND-API
+  version: "1.0"
+paths:
+  /api/v1/customers:
+    post:
+      consumes:
+      - application/json
+      description: Takes a JSON payload and creates an item in the system.
+      parameters:
+      - description: Data to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create new data...
+      tags:
+      - Customers
+  /api/v1/customers/{id}:
+    get:
+      description: Retrieves a single item by its ID.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get data by ID...
+      tags:
+      - Customers
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing item by ID.
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Data to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update data...
+      tags:
+      - Customers
+  /api/v1/orders:
+    get:
+      description: Retrieves a list of items from the system.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all data...
+      tags:
+      - Orders
+    post:
+      consumes:
+      - application/json
+      description: Takes a JSON payload and creates an item in the system.
+      parameters:
+      - description: Data to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create new data...
+      tags:
+      - Orders
+  /api/v1/orders/{id}:
+    get:
+      description: Retrieves a single item by its ID.
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get data by ID...
+      tags:
+      - Orders
+  /api/v1/products:
+    get:
+      description: Retrieves a list of all products ordered from newest to oldest.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all products...
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Takes a JSON payload and creates a product in the system.
+      parameters:
+      - description: Data to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateProductRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create new data...
+      tags:
+      - Products
+  /api/v1/users:
+    delete:
+      parameters:
+      - description: Soft delete data to disabled user
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SoftDeleteRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete data...
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: New data to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateUserRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update data...
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Data to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateUserRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create new data...
+      tags:
+      - Users
+swagger: "2.0"

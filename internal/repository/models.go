@@ -8,11 +8,67 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
+type Customer struct {
+	ID          uuid.UUID      `json:"id"`
+	Email       string         `json:"email"`
+	Phone       sql.NullString `json:"phone"`
+	Name        string         `json:"name"`
+	CompanyName sql.NullString `json:"company_name"`
+	Address     sql.NullString `json:"address"`
+	City        sql.NullString `json:"city"`
+	PostalCode  sql.NullString `json:"postal_code"`
+	Country     sql.NullString `json:"country"`
+	CreatedAt   sql.NullTime   `json:"created_at"`
+	UpdatedAt   sql.NullTime   `json:"updated_at"`
+	IsActive    sql.NullBool   `json:"is_active"`
+}
+
+type Order struct {
+	ID                     uuid.UUID      `json:"id"`
+	OrderNumber            string         `json:"order_number"`
+	CustomerID             uuid.UUID      `json:"customer_id"`
+	OrderType              interface{}    `json:"order_type"`
+	Status                 interface{}    `json:"status"`
+	TotalPrice             sql.NullString `json:"total_price"`
+	Notes                  sql.NullString `json:"notes"`
+	OrderDate              sql.NullTime   `json:"order_date"`
+	ExpectedCompletionDate sql.NullTime   `json:"expected_completion_date"`
+	ActualCompletionDate   sql.NullTime   `json:"actual_completion_date"`
+	CreatedAt              sql.NullTime   `json:"created_at"`
+	UpdatedAt              sql.NullTime   `json:"updated_at"`
+}
+
+type OrderItem struct {
+	ID           uuid.UUID      `json:"id"`
+	OrderID      uuid.UUID      `json:"order_id"`
+	ProductID    uuid.UUID      `json:"product_id"`
+	Quantity     int32          `json:"quantity"`
+	PricePerUnit string         `json:"price_per_unit"`
+	Subtotal     sql.NullString `json:"subtotal"`
+	CreatedAt    sql.NullTime   `json:"created_at"`
+	UpdatedAt    sql.NullTime   `json:"updated_at"`
+}
+
+type Product struct {
+	ID                  uuid.UUID             `json:"id"`
+	Name                string                `json:"name"`
+	Description         sql.NullString        `json:"description"`
+	Category            sql.NullString        `json:"category"`
+	BasePrice           string                `json:"base_price"`
+	IsCustomizable      sql.NullBool          `json:"is_customizable"`
+	CustomizationFields pqtype.NullRawMessage `json:"customization_fields"`
+	CreatedAt           sql.NullTime          `json:"created_at"`
+	UpdatedAt           sql.NullTime          `json:"updated_at"`
+	IsActive            sql.NullBool          `json:"is_active"`
+}
+
 type User struct {
-	ID        uuid.UUID      `json:"id"`
-	Email     string         `json:"email"`
-	FullName  sql.NullString `json:"full_name"`
-	CreatedAt sql.NullTime   `json:"created_at"`
+	ID        uuid.UUID    `json:"id"`
+	Email     string       `json:"email"`
+	FullName  string       `json:"full_name"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	DeletedAt sql.NullTime `json:"deleted_at"`
 }

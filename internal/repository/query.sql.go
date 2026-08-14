@@ -8,9 +8,191 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
+
+const createCustomer = `-- name: CreateCustomer :one
+INSERT INTO customers (
+  email, phone, name, company_name, address, city, postal_code, country
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7, $8
+)
+RETURNING id, email, phone, name, company_name, address, city, postal_code, country, created_at, updated_at, is_active
+`
+
+type CreateCustomerParams struct {
+	Email       string         `json:"email"`
+	Phone       sql.NullString `json:"phone"`
+	Name        string         `json:"name"`
+	CompanyName sql.NullString `json:"company_name"`
+	Address     sql.NullString `json:"address"`
+	City        sql.NullString `json:"city"`
+	PostalCode  sql.NullString `json:"postal_code"`
+	Country     sql.NullString `json:"country"`
+}
+
+func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
+	row := q.db.QueryRowContext(ctx, createCustomer,
+		arg.Email,
+		arg.Phone,
+		arg.Name,
+		arg.CompanyName,
+		arg.Address,
+		arg.City,
+		arg.PostalCode,
+		arg.Country,
+	)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Phone,
+		&i.Name,
+		&i.CompanyName,
+		&i.Address,
+		&i.City,
+		&i.PostalCode,
+		&i.Country,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const createOrder = `-- name: CreateOrder :one
+INSERT INTO orders (
+  order_number, customer_id, order_type, status, total_price, notes, order_date, expected_completion_date, actual_completion_date
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7, $8, $9
+)
+RETURNING id, order_number, customer_id, order_type, status, total_price, notes, order_date, expected_completion_date, actual_completion_date, created_at, updated_at
+`
+
+type CreateOrderParams struct {
+	OrderNumber            string         `json:"order_number"`
+	CustomerID             uuid.UUID      `json:"customer_id"`
+	OrderType              interface{}    `json:"order_type"`
+	Status                 interface{}    `json:"status"`
+	TotalPrice             sql.NullString `json:"total_price"`
+	Notes                  sql.NullString `json:"notes"`
+	OrderDate              sql.NullTime   `json:"order_date"`
+	ExpectedCompletionDate sql.NullTime   `json:"expected_completion_date"`
+	ActualCompletionDate   sql.NullTime   `json:"actual_completion_date"`
+}
+
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
+	row := q.db.QueryRowContext(ctx, createOrder,
+		arg.OrderNumber,
+		arg.CustomerID,
+		arg.OrderType,
+		arg.Status,
+		arg.TotalPrice,
+		arg.Notes,
+		arg.OrderDate,
+		arg.ExpectedCompletionDate,
+		arg.ActualCompletionDate,
+	)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.OrderNumber,
+		&i.CustomerID,
+		&i.OrderType,
+		&i.Status,
+		&i.TotalPrice,
+		&i.Notes,
+		&i.OrderDate,
+		&i.ExpectedCompletionDate,
+		&i.ActualCompletionDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createOrderItems = `-- name: CreateOrderItems :one
+INSERT INTO order_items (
+  order_id, product_id, quantity, price_per_unit
+) VALUES (
+  $1, $2, $3, $4
+)
+RETURNING id, order_id, product_id, quantity, price_per_unit, subtotal, created_at, updated_at
+`
+
+type CreateOrderItemsParams struct {
+	OrderID      uuid.UUID `json:"order_id"`
+	ProductID    uuid.UUID `json:"product_id"`
+	Quantity     int32     `json:"quantity"`
+	PricePerUnit string    `json:"price_per_unit"`
+}
+
+func (q *Queries) CreateOrderItems(ctx context.Context, arg CreateOrderItemsParams) (OrderItem, error) {
+	row := q.db.QueryRowContext(ctx, createOrderItems,
+		arg.OrderID,
+		arg.ProductID,
+		arg.Quantity,
+		arg.PricePerUnit,
+	)
+	var i OrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.ProductID,
+		&i.Quantity,
+		&i.PricePerUnit,
+		&i.Subtotal,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createProduct = `-- name: CreateProduct :one
+INSERT INTO products (
+  name, description, category, base_price, is_customizable, customization_fields
+) VALUES (
+  $1, $2, $3, $4, $5, $6
+)
+RETURNING id, name, description, category, base_price, is_customizable, customization_fields, created_at, updated_at, is_active
+`
+
+type CreateProductParams struct {
+	Name                string                `json:"name"`
+	Description         sql.NullString        `json:"description"`
+	Category            sql.NullString        `json:"category"`
+	BasePrice           string                `json:"base_price"`
+	IsCustomizable      sql.NullBool          `json:"is_customizable"`
+	CustomizationFields pqtype.NullRawMessage `json:"customization_fields"`
+}
+
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
+	row := q.db.QueryRowContext(ctx, createProduct,
+		arg.Name,
+		arg.Description,
+		arg.Category,
+		arg.BasePrice,
+		arg.IsCustomizable,
+		arg.CustomizationFields,
+	)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Category,
+		&i.BasePrice,
+		&i.IsCustomizable,
+		&i.CustomizationFields,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsActive,
+	)
+	return i, err
+}
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
@@ -18,13 +200,13 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3
 )
-RETURNING id, email, full_name, created_at
+RETURNING id, email, full_name, created_at, deleted_at
 `
 
 type CreateUserParams struct {
-	ID       uuid.UUID      `json:"id"`
-	Email    string         `json:"email"`
-	FullName sql.NullString `json:"full_name"`
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	FullName string    `json:"full_name"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -35,23 +217,391 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.FullName,
 		&i.CreatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
+const deleteOrderItemsByOrderID = `-- name: DeleteOrderItemsByOrderID :exec
+DELETE FROM order_items
+WHERE order_id = $1
+`
+
+func (q *Queries) DeleteOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteOrderItemsByOrderID, orderID)
+	return err
+}
+
+const getAllCustomers = `-- name: GetAllCustomers :many
+SELECT id, email, phone, name, company_name, address, city, postal_code, country, created_at, updated_at, is_active FROM customers ORDER BY created_at DESC
+`
+
+func (q *Queries) GetAllCustomers(ctx context.Context) ([]Customer, error) {
+	rows, err := q.db.QueryContext(ctx, getAllCustomers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Customer
+	for rows.Next() {
+		var i Customer
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Phone,
+			&i.Name,
+			&i.CompanyName,
+			&i.Address,
+			&i.City,
+			&i.PostalCode,
+			&i.Country,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCustomerByID = `-- name: GetCustomerByID :one
+SELECT id, email, phone, name, company_name, address, city, postal_code, country, created_at, updated_at, is_active FROM customers
+WHERE id = $1
+`
+
+func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, error) {
+	row := q.db.QueryRowContext(ctx, getCustomerByID, id)
+	var i Customer
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Phone,
+		&i.Name,
+		&i.CompanyName,
+		&i.Address,
+		&i.City,
+		&i.PostalCode,
+		&i.Country,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const getOrderByID = `-- name: GetOrderByID :one
+SELECT id, order_number, customer_id, order_type, status, total_price, notes, order_date, expected_completion_date, actual_completion_date, created_at, updated_at FROM orders WHERE id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error) {
+	row := q.db.QueryRowContext(ctx, getOrderByID, id)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.OrderNumber,
+		&i.CustomerID,
+		&i.OrderType,
+		&i.Status,
+		&i.TotalPrice,
+		&i.Notes,
+		&i.OrderDate,
+		&i.ExpectedCompletionDate,
+		&i.ActualCompletionDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getOrderWithItems = `-- name: GetOrderWithItems :one
+SELECT
+  o.id,
+  o.order_number,
+  o.customer_id,
+  o.order_type,
+  o.status,
+  o.total_price,
+  o.notes,
+  o.order_date,
+  o.expected_completion_date,
+  o.actual_completion_date,
+  COALESCE(
+    json_agg(
+      json_build_object(
+        'item_id', oi.id,
+        'product_id', oi.product_id,
+        'quantity', oi.quantity,
+        'price_per_unit', oi.price_per_unit
+      )
+    ) FILTER (WHERE oi.id IS NOT NULL),
+    '[]'::json
+  )::json AS items
+FROM orders o
+LEFT JOIN order_items oi ON o.id = oi.order_id
+WHERE o.id = $1 GROUP BY o.id
+`
+
+type GetOrderWithItemsRow struct {
+	ID                     uuid.UUID       `json:"id"`
+	OrderNumber            string          `json:"order_number"`
+	CustomerID             uuid.UUID       `json:"customer_id"`
+	OrderType              interface{}     `json:"order_type"`
+	Status                 interface{}     `json:"status"`
+	TotalPrice             sql.NullString  `json:"total_price"`
+	Notes                  sql.NullString  `json:"notes"`
+	OrderDate              sql.NullTime    `json:"order_date"`
+	ExpectedCompletionDate sql.NullTime    `json:"expected_completion_date"`
+	ActualCompletionDate   sql.NullTime    `json:"actual_completion_date"`
+	Items                  json.RawMessage `json:"items"`
+}
+
+func (q *Queries) GetOrderWithItems(ctx context.Context, id uuid.UUID) (GetOrderWithItemsRow, error) {
+	row := q.db.QueryRowContext(ctx, getOrderWithItems, id)
+	var i GetOrderWithItemsRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrderNumber,
+		&i.CustomerID,
+		&i.OrderType,
+		&i.Status,
+		&i.TotalPrice,
+		&i.Notes,
+		&i.OrderDate,
+		&i.ExpectedCompletionDate,
+		&i.ActualCompletionDate,
+		&i.Items,
+	)
+	return i, err
+}
+
+const getOrders = `-- name: GetOrders :many
+SELECT id, order_number, customer_id, order_type, status, total_price, notes, order_date, expected_completion_date, actual_completion_date, created_at, updated_at, count(*) OVER() as total_count
+FROM orders
+`
+
+type GetOrdersRow struct {
+	ID                     uuid.UUID      `json:"id"`
+	OrderNumber            string         `json:"order_number"`
+	CustomerID             uuid.UUID      `json:"customer_id"`
+	OrderType              interface{}    `json:"order_type"`
+	Status                 interface{}    `json:"status"`
+	TotalPrice             sql.NullString `json:"total_price"`
+	Notes                  sql.NullString `json:"notes"`
+	OrderDate              sql.NullTime   `json:"order_date"`
+	ExpectedCompletionDate sql.NullTime   `json:"expected_completion_date"`
+	ActualCompletionDate   sql.NullTime   `json:"actual_completion_date"`
+	CreatedAt              sql.NullTime   `json:"created_at"`
+	UpdatedAt              sql.NullTime   `json:"updated_at"`
+	TotalCount             int64          `json:"total_count"`
+}
+
+func (q *Queries) GetOrders(ctx context.Context) ([]GetOrdersRow, error) {
+	rows, err := q.db.QueryContext(ctx, getOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrdersRow
+	for rows.Next() {
+		var i GetOrdersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderNumber,
+			&i.CustomerID,
+			&i.OrderType,
+			&i.Status,
+			&i.TotalPrice,
+			&i.Notes,
+			&i.OrderDate,
+			&i.ExpectedCompletionDate,
+			&i.ActualCompletionDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getProducts = `-- name: GetProducts :many
+SELECT id, name, description, category, base_price, is_customizable, customization_fields, created_at, updated_at, is_active FROM products
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetProducts(ctx context.Context) ([]Product, error) {
+	rows, err := q.db.QueryContext(ctx, getProducts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Category,
+			&i.BasePrice,
+			&i.IsCustomizable,
+			&i.CustomizationFields,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, full_name, created_at FROM users
+SELECT users.id, users.email, users.full_name, users.created_at, users.deleted_at
+ FROM users
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+type GetUserByIDRow struct {
+	User User `json:"user"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.User.ID,
+		&i.User.Email,
+		&i.User.FullName,
+		&i.User.CreatedAt,
+		&i.User.DeletedAt,
+	)
+	return i, err
+}
+
+const softDeleteUser = `-- name: SoftDeleteUser :exec
+UPDATE users
+SET deleted_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) SoftDeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, softDeleteUser, id)
+	return err
+}
+
+const updateCustomer = `-- name: UpdateCustomer :exec
+UPDATE customers
+SET email = $2, phone = $3, name = $4, company_name = $5, address = $6, city = $7, postal_code = $8, country = $9, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateCustomerParams struct {
+	ID          uuid.UUID      `json:"id"`
+	Email       string         `json:"email"`
+	Phone       sql.NullString `json:"phone"`
+	Name        string         `json:"name"`
+	CompanyName sql.NullString `json:"company_name"`
+	Address     sql.NullString `json:"address"`
+	City        sql.NullString `json:"city"`
+	PostalCode  sql.NullString `json:"postal_code"`
+	Country     sql.NullString `json:"country"`
+}
+
+func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) error {
+	_, err := q.db.ExecContext(ctx, updateCustomer,
+		arg.ID,
+		arg.Email,
+		arg.Phone,
+		arg.Name,
+		arg.CompanyName,
+		arg.Address,
+		arg.City,
+		arg.PostalCode,
+		arg.Country,
+	)
+	return err
+}
+
+const updateOrder = `-- name: UpdateOrder :exec
+UPDATE orders
+SET customer_id = $2, order_type = $3, status= $4, total_price = $5, notes = $6, order_date = $7, expected_completion_date = $8, actual_completion_date = $9
+WHERE id = $1
+`
+
+type UpdateOrderParams struct {
+	ID                     uuid.UUID      `json:"id"`
+	CustomerID             uuid.UUID      `json:"customer_id"`
+	OrderType              interface{}    `json:"order_type"`
+	Status                 interface{}    `json:"status"`
+	TotalPrice             sql.NullString `json:"total_price"`
+	Notes                  sql.NullString `json:"notes"`
+	OrderDate              sql.NullTime   `json:"order_date"`
+	ExpectedCompletionDate sql.NullTime   `json:"expected_completion_date"`
+	ActualCompletionDate   sql.NullTime   `json:"actual_completion_date"`
+}
+
+func (q *Queries) UpdateOrder(ctx context.Context, arg UpdateOrderParams) error {
+	_, err := q.db.ExecContext(ctx, updateOrder,
+		arg.ID,
+		arg.CustomerID,
+		arg.OrderType,
+		arg.Status,
+		arg.TotalPrice,
+		arg.Notes,
+		arg.OrderDate,
+		arg.ExpectedCompletionDate,
+		arg.ActualCompletionDate,
+	)
+	return err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+  set email = $2,
+  full_name = $3
+WHERE id = $1
+RETURNING id, email, full_name, created_at, deleted_at
+`
+
+type UpdateUserParams struct {
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	FullName string    `json:"full_name"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUser, arg.ID, arg.Email, arg.FullName)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
 		&i.FullName,
 		&i.CreatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }

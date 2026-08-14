@@ -10,3 +10,9 @@ sql:
         emit_json_tags: true # ให้สร้าง JSON Tags ใน Struct อัตโนมัติ (มีประโยชน์ตอนส่ง API)
         emit_pointers_for_null_types: true # อนุญาตให้เป็น null ให้กลายเป็น pointer (*string, *int)
         emit_prepared_queries: false # ปิดไว้ก่อนเพื่อความเรียบง่าย
+        overrides:
+          - db_type: jsonb
+            go_type:
+              import: "encoding/json"
+              package: "json"
+              type: "RawMessage"
