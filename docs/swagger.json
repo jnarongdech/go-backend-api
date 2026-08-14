@@ -2,11 +2,10 @@
     "swagger": "2.0",
     "info": {
         "description": "ระบบจัดการ API สำหรับโรงงาน STEEL-FACTORY",
-        "title": "GO-BACKEND-API",
+        "title": "STEEL-FACTORY-API",
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
     "basePath": "/",
     "paths": {
         "/api/v1/customers": {

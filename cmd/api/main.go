@@ -14,11 +14,10 @@ import (
 	_ "github.com/jnarongdech/go-backend-api/docs"
 )
 
-// @title GO-BACKEND-API
-// @version 1.0
-// @description ระบบจัดการ API สำหรับโรงงาน STEEL-FACTORY
-// @host localhost:8080
-// @BasePath /
+// @title           STEEL-FACTORY-API
+// @version         1.0
+// @description     ระบบจัดการ API สำหรับโรงงาน STEEL-FACTORY
+// @BasePath        /
 func main() {
 	config.LoadEnv()
 

@@ -147,11 +147,10 @@ definitions:
     - full_name
     - id
     type: object
-host: localhost:8080
 info:
   contact: {}
   description: ระบบจัดการ API สำหรับโรงงาน STEEL-FACTORY
-  title: GO-BACKEND-API
+  title: STEEL-FACTORY-API
   version: "1.0"
 paths:
   /api/v1/customers:
