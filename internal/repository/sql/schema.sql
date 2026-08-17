@@ -64,3 +64,18 @@ CREATE TABLE order_items (
   CONSTRAINT qty_positive CHECK (quantity > 0),
   CONSTRAINT price_positive CHECK (price_per_unit > 0)
 );
+
+CREATE TABLE materials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  thickness_mm DECIMAL(5, 2),
+  grade VARCHAR(50),
+  description TEXT,
+  cost_per_kg DECIMAL(10, 2),
+  stock_qty_kg DECIMAL(12, 2) DEFAULT 0,
+  reorder_level_kg DECIMAL(12, 2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT cost_positive CHECK (cost_per_kg > 0),
+  CONSTRAINT stock_non_negative CHECK (stock_qty_kg >= 0)
+);

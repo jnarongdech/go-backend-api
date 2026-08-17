@@ -26,6 +26,19 @@ type Customer struct {
 	IsActive    sql.NullBool   `json:"is_active"`
 }
 
+type Material struct {
+	ID             uuid.UUID      `json:"id"`
+	Name           string         `json:"name"`
+	ThicknessMm    sql.NullString `json:"thickness_mm"`
+	Grade          sql.NullString `json:"grade"`
+	Description    sql.NullString `json:"description"`
+	CostPerKg      sql.NullString `json:"cost_per_kg"`
+	StockQtyKg     sql.NullString `json:"stock_qty_kg"`
+	ReorderLevelKg sql.NullString `json:"reorder_level_kg"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
 type Order struct {
 	ID                     uuid.UUID      `json:"id"`
 	OrderNumber            string         `json:"order_number"`

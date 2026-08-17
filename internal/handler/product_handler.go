@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"errors"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jnarongdech/go-backend-api/internal/dto"
 	"github.com/jnarongdech/go-backend-api/internal/service"
 	constants "github.com/jnarongdech/go-backend-api/pkg/consts"
+	"github.com/jnarongdech/go-backend-api/pkg/errs"
 	"github.com/jnarongdech/go-backend-api/pkg/response"
 )
 
@@ -30,6 +29,7 @@ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+
 	return response.SuccessResponse(c, fiber.StatusOK, "Success!", products)
 }
 
@@ -44,13 +44,17 @@ func (h *ProductHandler) GetProducts(c *fiber.Ctx) error {
 func (h *ProductHandler) CreateProduct(c *fiber.Ctx) error {
 	var req dto.CreateProductRequest
 	if errBody := c.BodyParser(&req); errBody != nil {
-		return response.ErrorResponse(c, errors.New(constants.ErrCreateInternalServer))
+		return errs.NewBadRequest(constants.ErrInvalidJSONFormat, errBody)
+	}
+
+	if err := validate.Struct(req); err != nil {
+		return errs.NewBadRequest(constants.ErrInvalidFormatOrIncompleteData, err)
 	}
 
 	result, err := h.productService.CreateProduct(c.Context(), req)
 	if err != nil {
-		return response.ErrorResponse(c, err)
+		return err
 	}
 
-	return response.SuccessResponse(c, fiber.StatusCreated, "Created Successfully!", result)
+	return response.SuccessResponse(c, fiber.StatusCreated, "Created!", result)
 }

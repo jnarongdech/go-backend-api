@@ -3,7 +3,7 @@ package dto
 import "encoding/json"
 
 type CreateProductRequest struct {
-	Name                string          `json:"name"`
+	Name                string          `json:"name" validate:"required"`
 	Description         *string         `json:"description"`
 	Category            *string         `json:"category"`
 	BasePrice           string          `json:"base_price"`

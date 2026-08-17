@@ -20,6 +20,11 @@ func (m *MockCustomerRepository) GetCustomerByID(ctx context.Context, id uuid.UU
 	return m.MockData, m.MockErr
 }
 
+func (m *MockCustomerRepository) ExecTx(ctx context.Context, fn func(*repository.Queries) error) error {
+	// คืนค่าแค่ error ตัวเดียว ตามที่ Interface ต้องการ
+	return m.MockErr
+}
+
 // Start Unit Test : GetCustomerByID
 // case 1 : Happy Path
 func TestGetCustomerByID_Success(t *testing.T) {

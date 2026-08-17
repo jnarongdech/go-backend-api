@@ -10,6 +10,7 @@ type AppHandlers struct {
 	Product  *handler.ProductHandler
 	Customer *handler.CustomerHandler
 	Order    *handler.OrderHandler
+	Material *handler.MaterialHandler
 }
 
 func SetupRoutes(app *fiber.App, h *AppHandlers) {
@@ -42,6 +43,11 @@ func SetupRoutes(app *fiber.App, h *AppHandlers) {
 	orders.Get("/", h.Order.GetOrders)
 	orders.Get("/:id", h.Order.GetOrderByID)
 	orders.Post("/", h.Order.CreateOrderWithItems)
+
+	materials := v1.Group("/materials")
+	materials.Post("/", h.Material.CreateMaterial)
+	materials.Get("/", h.Material.GetMaterials)
+	materials.Get("/:id", h.Material.GetMaterialByID)
 
 	// ---------------------------------------------------------
 	// ตัวอย่าง: ถ้าอนาคตมีระบบที่ต้อง Login ถึงจะเข้าได้

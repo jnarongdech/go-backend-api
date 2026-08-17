@@ -31,3 +31,11 @@ func NewInternal(message string, err error) error {
 		Err:     err,
 	}
 }
+
+func NewNotFound(msg string, err error) error {
+	return AppError{
+		Code:    404,
+		Message: msg,
+		Err:     err,
+	}
+}

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"errors"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jnarongdech/go-backend-api/internal/dto"
@@ -30,8 +28,9 @@ func NewOrderHandler(orderService *service.OrderService) *OrderHandler {
 func (h *OrderHandler) GetOrders(c *fiber.Ctx) error {
 	data, err := h.orderService.GetOrders(c.Context())
 	if err != nil {
-		return response.ErrorResponse(c, errs.NewInternal("", err))
+		return err
 	}
+
 	orderList := make([]dto.OrderResponse, 0, len(data))
 	for _, dataItem := range data {
 		mappedItem := dto.OrderResponse{
@@ -48,6 +47,7 @@ func (h *OrderHandler) GetOrders(c *fiber.Ctx) error {
 		}
 		orderList = append(orderList, mappedItem)
 	}
+
 	return response.SuccessResponse(c, fiber.StatusOK, "Get orders successfully!", orderList)
 }
 
@@ -63,9 +63,14 @@ func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 	orderID := c.Params("id")
 	orderUUID, err := uuid.Parse(orderID)
 	if err != nil {
-		return response.ErrorResponse(c, errors.New(constants.ErrInvalidIDFormat))
+		return errs.NewBadRequest(constants.ErrInvalidIDFormat, err)
 	}
+
 	result, err := h.orderService.GetOrderByID(c.Context(), orderUUID)
+	if err != nil {
+		return err
+	}
+
 	return response.SuccessResponse(c, fiber.StatusOK, "Success!", result)
 }
 
@@ -81,11 +86,12 @@ func (h *OrderHandler) GetOrderByID(c *fiber.Ctx) error {
 func (h *OrderHandler) CreateOrderWithItems(c *fiber.Ctx) error {
 	var req dto.CreateOrderRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.ErrorResponse(c, errs.NewBadRequest(constants.ErrInvalidJSONFormat, err))
+		return errs.NewBadRequest(constants.ErrInvalidJSONFormat, err)
 	}
+
 	err := h.orderService.CreateOrderWithItems(c.Context(), req)
 	if err != nil {
-		return response.ErrorResponse(c, err)
+		return err
 	}
 
 	return response.SuccessResponse(c, fiber.StatusCreated, "Created Order Successfully!", nil)

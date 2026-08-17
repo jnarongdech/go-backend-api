@@ -2,9 +2,8 @@ package handler
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jnarongdech/go-backend-api/internal/dto"
@@ -13,6 +12,8 @@ import (
 	"github.com/jnarongdech/go-backend-api/pkg/errs"
 	"github.com/jnarongdech/go-backend-api/pkg/response"
 )
+
+var validate = validator.New()
 
 type ICustomerService interface {
 	GetCustomerByID(ctx context.Context, id uuid.UUID) (repository.Customer, error)
@@ -38,15 +39,15 @@ func NewCustomerHandler(customerService ICustomerService) *CustomerHandler {
 // @Success      200 {object} map[string]interface{}
 // @Router       /api/v1/customers/{id} [get]
 func (h *CustomerHandler) GetCustomerByID(c *fiber.Ctx) error {
-	// GET ID from URL PATH /api/v1/customers/:id
-	customerID := c.Params("id")
-	if customerID == "" {
-		return response.ErrorResponse(c, errors.New("Customer ID is required"))
+	id := c.Params("id")
+	customerUUID, err := uuid.Parse(id)
+	if err != nil {
+		return errs.NewBadRequest(constants.ErrInvalidIDFormat, err)
 	}
-	customerUUID, err := uuid.Parse(customerID)
+
 	customer, err := h.customerService.GetCustomerByID(c.Context(), customerUUID)
 	if err != nil {
-		return response.ErrorResponse(c, errors.New("Customer not found."))
+		return err
 	}
 
 	return response.SuccessResponse(c, 200, "Success!", customer)
@@ -65,19 +66,16 @@ func (h *CustomerHandler) CreateCustomer(c *fiber.Ctx) error {
 	var req dto.CreateCustomerRequest
 
 	if err := c.BodyParser(&req); err != nil {
-		return response.ErrorResponse(c, errors.New(constants.ErrInvalidJSONFormat))
+		return errs.NewBadRequest(constants.ErrInvalidJSONFormat, err)
 	}
 
-	if req.Name == "" {
-		return response.ErrorResponse(c, errors.New(constants.ErrMissingFieldName))
-	}
-	if req.Email == "" {
-		return response.ErrorResponse(c, errors.New(constants.ErrMissingFieldEmail))
+	if err := validate.Struct(&req); err != nil {
+		return errs.NewBadRequest(constants.ErrInvalidFormatOrIncompleteData, err)
 	}
 
 	customer, errCreate := h.customerService.CreateCustomer(c.Context(), req)
 	if errCreate != nil {
-		return response.ErrorResponse(c, errCreate)
+		return errCreate
 	}
 
 	return response.SuccessResponse(c, fiber.StatusCreated, "Customer created successfully!", customer)
@@ -95,28 +93,25 @@ func (h *CustomerHandler) CreateCustomer(c *fiber.Ctx) error {
 // @Router       /api/v1/customers/{id} [put]
 func (h *CustomerHandler) UpdateCustomer(c *fiber.Ctx) error {
 	idParam := c.Params("id")
-	customerUUID, errUUID := uuid.Parse(idParam)
-	if errUUID != nil {
-		fmt.Println("[Error] %w", errUUID)
-		return response.ErrorResponse(c, errs.NewBadRequest(constants.ErrInvalidIDFormat, errUUID))
+	customerUUID, err := uuid.Parse(idParam)
+	if err != nil {
+		return errs.NewBadRequest(constants.ErrInvalidIDFormat, err)
 	}
 
 	var req dto.UpdateCustomerRequest
 	req.ID = customerUUID
-	if errParams := c.BodyParser(&req); errParams != nil {
-		return response.ErrorResponse(c, errors.New(constants.ErrInvalidJSONFormat))
+	if errFormat := c.BodyParser(&req); errFormat != nil {
+		return errs.NewBadRequest(constants.ErrInvalidJSONFormat, errFormat)
 	}
-	if req.Name == "" {
-		return response.ErrorResponse(c, errors.New(constants.ErrMissingFieldName))
-	}
-	if req.Email == "" {
-		return response.ErrorResponse(c, errors.New(constants.ErrMissingFieldEmail))
+
+	if err := validate.Struct(req); err != nil {
+		return errs.NewBadRequest(constants.ErrInvalidFormatOrIncompleteData, err)
 	}
 
 	errUpdate := h.customerService.UpdateCustomer(c.Context(), req)
 	if errUpdate != nil {
-		return response.ErrorResponse(c, errUpdate)
+		return err
 	}
 
-	return response.SuccessResponse(c, fiber.StatusOK, "Customer updated successfully!", nil)
+	return response.SuccessResponse(c, fiber.StatusOK, "Updated!", nil)
 }

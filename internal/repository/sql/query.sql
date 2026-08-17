@@ -113,3 +113,32 @@ SELECT
 FROM orders o
 LEFT JOIN order_items oi ON o.id = oi.order_id
 WHERE o.id = $1 GROUP BY o.id;
+
+-- name: GetMaterials :many
+SELECT * FROM materials ORDER BY created_at DESC;
+
+-- name: CreateMaterial :one
+INSERT INTO materials (
+  name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7
+)
+RETURNING id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at;
+
+-- name: GetMaterialByID :one
+SELECT id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at
+FROM materials
+WHERE id = $1 LIMIT 1;
+
+-- name: ListMaterials :many
+SELECT id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at
+FROM materials
+ORDER BY created_at DESC;
+
+-- name: UpdateMaterialStock :one
+UPDATE materials
+SET
+  stock_qty_kg = stock_qty_kg + $2,
+  updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, name, stock_qty_kg, updated_at;

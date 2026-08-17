@@ -9,28 +9,25 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
+// ==========================================
+// 1. DB (sql.Null...) -> Go (Pointer)
+// ==========================================
+
 // NullStringToFloatPointer แปลงเลขที่อยู่ในรูป sql.NullString ให้กลายเป็น *float64
 func NullStringToFloatPointer(ns sql.NullString) *float64 {
-	// 1. ถ้าค่าเป็น NULL ใน Database ให้รีเทิร์น nil
 	if !ns.Valid {
 		return nil
 	}
-
-	// 2. พยายามแปลง String เป็น Float64
 	val, err := strconv.ParseFloat(ns.String, 64)
 	if err != nil {
-		// ถ้าข้อมูลใน DB พัง (เช่น เผลอเก็บตัวอักษรลงไป) จะคืนค่า nil ป้องกันระบบแครช
 		return nil
 	}
-
-	// 3. ถ้าแปลงสำเร็จ ส่ง Pointer กลับไป
 	return &val
 }
 
 // NullStringToPointer แปลง sql.NullString เป็น *string
 func NullStringToPointer(ns sql.NullString) *string {
 	if ns.Valid {
-		// ต้องก๊อปปี้ค่าใส่ตัวแปรใหม่ก่อนรีเทิร์น เพื่อป้องกันบั๊กเรื่อง Pointer ในหน่วยความจำ
 		val := ns.String
 		return &val
 	}
@@ -73,6 +70,21 @@ func NullBoolToPointer(nb sql.NullBool) *bool {
 	return nil
 }
 
+// ==========================================
+// 2. Go (Pointer) -> DB (sql.Null...)
+// ==========================================
+
+// FloatPointerToNullString แปลง *float64 เป็น sql.NullString (เข้าคู่กับ NullStringToFloatPointer)
+func FloatPointerToNullString(f *float64) sql.NullString {
+	if f != nil {
+		return sql.NullString{
+			String: strconv.FormatFloat(*f, 'f', -1, 64),
+			Valid:  true,
+		}
+	}
+	return sql.NullString{Valid: false}
+}
+
 // PointerToNullString แปลง *string เป็น sql.NullString
 func PointerToNullString(s *string) sql.NullString {
 	if s != nil {
@@ -113,10 +125,38 @@ func PointerToNullTime(t *time.Time) sql.NullTime {
 	return sql.NullTime{Valid: false}
 }
 
-// 🟢 โบนัส: สำหรับจัดการ CustomizationFields ที่เป็น JSONB โดยเฉพาะ
+// ==========================================
+// 3. Go (Basic Value) -> DB (sql.Null...)
+// (ส่วนที่เพิ่มเข้ามา เพื่อรองรับ DTO ที่ไม่ได้ใช้ Pointer)
+// ==========================================
+
+// ValueToNullString รับ string ปกติ ถ้าเป็น "" จะเป็น NULL
+func ValueToNullString(s string) sql.NullString {
+	return sql.NullString{String: s, Valid: s != ""}
+}
+
+// ValueToNullFloat64 รับ float64 ปกติ ถ้าเป็น 0 จะเป็น NULL
+func ValueToNullFloat64(f float64) sql.NullFloat64 {
+	return sql.NullFloat64{Float64: f, Valid: f != 0}
+}
+
+// FloatValueToNullString รับ float64 แปลงลง DB ที่เป็น string (ถ้า 0 จะเป็น NULL)
+func FloatValueToNullString(f float64) sql.NullString {
+	if f == 0 {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{
+		String: strconv.FormatFloat(f, 'f', -1, 64),
+		Valid:  true,
+	}
+}
+
+// ==========================================
+// 4. JSONB Utilities
+// ==========================================
+
 // JsonToNullRawMessage แปลง json.RawMessage เป็น pqtype.NullRawMessage
 func JsonToNullRawMessage(j json.RawMessage) pqtype.NullRawMessage {
-	// เช็คว่ามีข้อมูลไหม และไม่ใช่ค่า "null" (แบบ String ที่ลอยมาจาก JSON)
 	if len(j) > 0 && string(j) != "null" {
 		return pqtype.NullRawMessage{RawMessage: j, Valid: true}
 	}

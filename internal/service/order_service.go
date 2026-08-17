@@ -32,10 +32,9 @@ func (s *OrderService) GetOrders(ctx context.Context) ([]dto.OrderResponse, erro
 	if err != nil {
 		log.Printf("[ERROR] GetOrders failed: %v", err)
 		if errors.Is(err, sql.ErrNoRows) {
-			// แปลงเป็น 404 Not Found
-			return []dto.OrderResponse{}, errs.AppError{Code: 404, Message: "order data not found."}
+			return []dto.OrderResponse{}, errs.NewNotFound(constants.ErrResourceNotFound, err)
 		}
-		return []dto.OrderResponse{}, errs.NewInternal("Unable to get orders", err)
+		return []dto.OrderResponse{}, errs.NewInternal(constants.ErrInternalServer, err)
 	}
 
 	result := make([]dto.OrderResponse, 0, len(data))
@@ -93,17 +92,15 @@ func (s *OrderService) GetOrders(ctx context.Context) ([]dto.OrderResponse, erro
 }
 
 func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (dto.OrderResponse, error) {
-
 	row, err := s.store.GetOrderWithItems(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			fmt.Printf("[ERROR] GetOrderByID failed: %v", err)
-			return dto.OrderResponse{}, errs.AppError{Code: 404, Message: "Unable to create order."}
+			fmt.Printf("[ERROR] Get order by id failed: %v", err)
+			return dto.OrderResponse{}, errs.NewNotFound(constants.ErrResourceNotFound, err) // 404
 		}
 	}
 
 	var orderItems []dto.OrderItemsResponse
-
 	if len(row.Items) > 0 {
 		err = json.Unmarshal(row.Items, &orderItems)
 		if err != nil {
@@ -122,21 +119,14 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (dto.Orde
 		OrderDate:              utils.NullTimeToPointer(row.OrderDate),
 		ExpectedCompletionDate: utils.NullTimeToPointer(row.ExpectedCompletionDate),
 		ActualCompletionDate:   utils.NullTimeToPointer(row.ActualCompletionDate),
-
-		Items: orderItems,
+		Items:                  orderItems,
 	}
 
 	return result, nil
 }
 
 func (s *OrderService) CreateOrderWithItems(ctx context.Context, req dto.CreateOrderRequest) error {
-	fmt.Println("req :", req)
 	err := s.store.ExecTx(ctx, func(qtx *repository.Queries) error {
-		// Validation
-		if req.CustomerID == uuid.Nil {
-			return errs.NewBadRequest(constants.ErrCustomerIDEmpty, nil)
-		}
-
 		// เตรียมข้อมูล (ป้องกัน nil pointer ให้ครบทุกตัว)
 		var dbTotalPrice sql.NullString
 		if req.TotalPrice != nil {
@@ -173,7 +163,6 @@ func (s *OrderService) CreateOrderWithItems(ctx context.Context, req dto.CreateO
 		// จะได้ผลลัพธ์ประมาณ: "ORD-2608-X7K9"
 		orderNumber := fmt.Sprintf("ORD-%s-%s", currentMonth, randomCode)
 
-		// 3. ประกอบร่างเพื่อสร้างบิล
 		orderArg := repository.CreateOrderParams{
 			CustomerID:             req.CustomerID,
 			OrderNumber:            orderNumber,
@@ -192,7 +181,6 @@ func (s *OrderService) CreateOrderWithItems(ctx context.Context, req dto.CreateO
 			return errs.NewInternal(constants.ErrInternalServer, errCreateOrder)
 		}
 
-		// 4. วนลูปสร้างรายการสินค้า
 		for _, itemReq := range req.Items {
 			itemArg := repository.CreateOrderItemsParams{
 				OrderID:      createOrder.ID,
@@ -201,22 +189,18 @@ func (s *OrderService) CreateOrderWithItems(ctx context.Context, req dto.CreateO
 				PricePerUnit: fmt.Sprintf("%.2f", itemReq.PricePerUnit),
 			}
 
-			_, errCreateOrderItem := qtx.CreateOrderItems(ctx, itemArg)
-			if errCreateOrderItem != nil {
-				if errors.Is(errCreateOrderItem, sql.ErrNoRows) {
-					// โดนดักตรงนี้ และพ่น 404 กลับไป
-					return errs.AppError{Code: 404, Message: "Unable to create order items."}
-				}
-				return errs.NewInternal(constants.ErrInternalServer, errCreateOrderItem)
+			_, errItem := qtx.CreateOrderItems(ctx, itemArg)
+			if errItem != nil {
+				return errs.NewInternal(constants.ErrInternalServer, errItem)
 			}
 		}
 
 		return nil
 	})
 
-	// 🟢 5. เช็ค Error จาก Transaction
+	// เช็ค Error จาก Transaction
 	if err != nil {
-		return errors.New(constants.ErrInternalServer)
+		return errs.NewInternal(constants.ErrInternalServer, err)
 	}
 
 	return nil
@@ -224,15 +208,6 @@ func (s *OrderService) CreateOrderWithItems(ctx context.Context, req dto.CreateO
 
 func (s *OrderService) UpdateOrderWithItems(ctx context.Context, orderID uuid.UUID, req dto.UpdateOrderRequest) error {
 	err := s.store.ExecTx(ctx, func(qtx *repository.Queries) error {
-		// Validation
-		if orderID == uuid.Nil {
-			return errors.New(constants.ErrOrderIDEmpty)
-		}
-
-		if req.CustomerID == uuid.Nil {
-			return errors.New(constants.ErrCustomerIDEmpty)
-		}
-
 		// เตรียมข้อมูล (ป้องกัน nil pointer ให้ครบทุกตัว)
 		var dbTotalPrice sql.NullString
 		if req.TotalPrice != nil {
@@ -273,9 +248,11 @@ func (s *OrderService) UpdateOrderWithItems(ctx context.Context, orderID uuid.UU
 			ExpectedCompletionDate: dbExpectedDate,
 			ActualCompletionDate:   dbActualDate,
 		}
+
 		err := qtx.UpdateOrder(ctx, orderArg)
 		if err != nil {
-			return errors.New("Unable to update order data.")
+			log.Printf("[ERROR] Update order failed for ID %s: %v", req.ID, err)
+			return errs.NewInternal(constants.ErrInternalServer, err)
 		}
 
 		// delete items and add items

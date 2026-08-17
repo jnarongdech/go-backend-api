@@ -16,10 +16,9 @@ import (
 )
 
 type ProductService struct {
-	store *repository.Store // 🟢 ใช้ Store ตามโครงสร้างใหม่
+	store *repository.Store
 }
 
-// เปลี่ยนพารามิเตอร์มารับ *repository.Store แทน
 func NewProductService(store *repository.Store) *ProductService {
 	return &ProductService{
 		store: store, // จับยัดใส่ struct
@@ -31,9 +30,8 @@ func (s *ProductService) GetProducts(ctx context.Context) ([]repository.Product,
 
 	if err != nil {
 		log.Printf("[ERROR] GetProducts failed: %v", err)
-
 		if errors.Is(err, sql.ErrNoRows) {
-			return []repository.Product{}, errs.NewBadRequest(constants.ErrDataNotFound, err)
+			return []repository.Product{}, errs.NewNotFound(constants.ErrResourceNotFound, err)
 		}
 
 		return []repository.Product{}, errs.NewInternal(constants.ErrInternalServer, err)
@@ -48,7 +46,7 @@ func (s *ProductService) GetProducts(ctx context.Context) ([]repository.Product,
 
 func (s *ProductService) CreateProduct(ctx context.Context, req dto.CreateProductRequest) (dto.ProductResponse, error) {
 	if s.store == nil {
-		fmt.Println("🚨 แย่แล้ว! s.store เป็น nil (ลืม Inject Database แน่ๆ)")
+		fmt.Println("s.store เป็น nil (ลืม Inject Database แน่ๆ)")
 	}
 
 	arg := repository.CreateProductParams{
@@ -61,11 +59,9 @@ func (s *ProductService) CreateProduct(ctx context.Context, req dto.CreateProduc
 	}
 
 	row, err := s.store.CreateProduct(ctx, arg)
-
-	fmt.Println("👉 5. คุยกับ Database เสร็จแล้ว! (ไม่ระเบิด)")
 	if err != nil {
-		log.Printf("\n[DEBUG DB ERROR] CreateProduct พังเพราะ: %v\n", err)
-		return dto.ProductResponse{}, errs.NewInternal(constants.ErrCreateInternalServer, err)
+		log.Printf("\n[ERROR] Create product failed: %v", err)
+		return dto.ProductResponse{}, errs.NewInternal(constants.ErrInternalServer, err)
 	}
 
 	var customFields json.RawMessage

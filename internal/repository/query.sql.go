@@ -63,6 +63,51 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 	return i, err
 }
 
+const createMaterial = `-- name: CreateMaterial :one
+INSERT INTO materials (
+  name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg
+) VALUES (
+  $1, $2, $3, $4, $5, $6, $7
+)
+RETURNING id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at
+`
+
+type CreateMaterialParams struct {
+	Name           string         `json:"name"`
+	ThicknessMm    sql.NullString `json:"thickness_mm"`
+	Grade          sql.NullString `json:"grade"`
+	Description    sql.NullString `json:"description"`
+	CostPerKg      sql.NullString `json:"cost_per_kg"`
+	StockQtyKg     sql.NullString `json:"stock_qty_kg"`
+	ReorderLevelKg sql.NullString `json:"reorder_level_kg"`
+}
+
+func (q *Queries) CreateMaterial(ctx context.Context, arg CreateMaterialParams) (Material, error) {
+	row := q.db.QueryRowContext(ctx, createMaterial,
+		arg.Name,
+		arg.ThicknessMm,
+		arg.Grade,
+		arg.Description,
+		arg.CostPerKg,
+		arg.StockQtyKg,
+		arg.ReorderLevelKg,
+	)
+	var i Material
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ThicknessMm,
+		&i.Grade,
+		&i.Description,
+		&i.CostPerKg,
+		&i.StockQtyKg,
+		&i.ReorderLevelKg,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createOrder = `-- name: CreateOrder :one
 INSERT INTO orders (
   order_number, customer_id, order_type, status, total_price, notes, order_date, expected_completion_date, actual_completion_date
@@ -297,6 +342,68 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 	return i, err
 }
 
+const getMaterialByID = `-- name: GetMaterialByID :one
+SELECT id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at
+FROM materials
+WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetMaterialByID(ctx context.Context, id uuid.UUID) (Material, error) {
+	row := q.db.QueryRowContext(ctx, getMaterialByID, id)
+	var i Material
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ThicknessMm,
+		&i.Grade,
+		&i.Description,
+		&i.CostPerKg,
+		&i.StockQtyKg,
+		&i.ReorderLevelKg,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMaterials = `-- name: GetMaterials :many
+SELECT id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at FROM materials ORDER BY created_at DESC
+`
+
+func (q *Queries) GetMaterials(ctx context.Context) ([]Material, error) {
+	rows, err := q.db.QueryContext(ctx, getMaterials)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Material
+	for rows.Next() {
+		var i Material
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ThicknessMm,
+			&i.Grade,
+			&i.Description,
+			&i.CostPerKg,
+			&i.StockQtyKg,
+			&i.ReorderLevelKg,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getOrderByID = `-- name: GetOrderByID :one
 SELECT id, order_number, customer_id, order_type, status, total_price, notes, order_date, expected_completion_date, actual_completion_date, created_at, updated_at FROM orders WHERE id = $1 ORDER BY created_at DESC
 `
@@ -502,6 +609,46 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 	return i, err
 }
 
+const listMaterials = `-- name: ListMaterials :many
+SELECT id, name, thickness_mm, grade, description, cost_per_kg, stock_qty_kg, reorder_level_kg, created_at, updated_at
+FROM materials
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListMaterials(ctx context.Context) ([]Material, error) {
+	rows, err := q.db.QueryContext(ctx, listMaterials)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Material
+	for rows.Next() {
+		var i Material
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ThicknessMm,
+			&i.Grade,
+			&i.Description,
+			&i.CostPerKg,
+			&i.StockQtyKg,
+			&i.ReorderLevelKg,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const softDeleteUser = `-- name: SoftDeleteUser :exec
 UPDATE users
 SET deleted_at = now()
@@ -544,6 +691,39 @@ func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) 
 		arg.Country,
 	)
 	return err
+}
+
+const updateMaterialStock = `-- name: UpdateMaterialStock :one
+UPDATE materials
+SET
+  stock_qty_kg = stock_qty_kg + $2,
+  updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, name, stock_qty_kg, updated_at
+`
+
+type UpdateMaterialStockParams struct {
+	ID         uuid.UUID      `json:"id"`
+	StockQtyKg sql.NullString `json:"stock_qty_kg"`
+}
+
+type UpdateMaterialStockRow struct {
+	ID         uuid.UUID      `json:"id"`
+	Name       string         `json:"name"`
+	StockQtyKg sql.NullString `json:"stock_qty_kg"`
+	UpdatedAt  sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) UpdateMaterialStock(ctx context.Context, arg UpdateMaterialStockParams) (UpdateMaterialStockRow, error) {
+	row := q.db.QueryRowContext(ctx, updateMaterialStock, arg.ID, arg.StockQtyKg)
+	var i UpdateMaterialStockRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.StockQtyKg,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateOrder = `-- name: UpdateOrder :exec

@@ -11,6 +11,7 @@ import (
 	"github.com/jnarongdech/go-backend-api/internal/repository"
 	"github.com/jnarongdech/go-backend-api/internal/router"
 	"github.com/jnarongdech/go-backend-api/internal/service"
+	"github.com/jnarongdech/go-backend-api/pkg/response"
 )
 
 func SetupServer(db *sql.DB) *fiber.App {
@@ -30,15 +31,20 @@ func SetupServer(db *sql.DB) *fiber.App {
 	orderService := service.NewOrderService(store)
 	orderHandler := handler.NewOrderHandler(orderService)
 
+	materialService := service.NewMaterialService(store)
+	materialHandler := handler.NewMaterialHandler(materialService)
+
 	handlers := &router.AppHandlers{
 		User:     userHandler,
 		Product:  productHandler,
 		Customer: customerHandler,
 		Order:    orderHandler,
+		Material: materialHandler,
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName: "STEEL-FACTORY API v1.0",
+		AppName:      "STEEL-FACTORY API v1.0",
+		ErrorHandler: response.ErrorHandler,
 	})
 
 	app.Use(logger.New())

@@ -12,7 +12,4 @@ sql:
         emit_prepared_queries: false # ปิดไว้ก่อนเพื่อความเรียบง่าย
         overrides:
           - db_type: jsonb
-            go_type:
-              import: "encoding/json"
-              package: "json"
-              type: "RawMessage"
+            go_type: "encoding/json.RawMessage"

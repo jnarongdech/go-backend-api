@@ -22,11 +22,6 @@ func NewUserService(userRepo *repository.UserRepository) *UserService {
 // 3. เริ่มเขียน Business Logic ต่างๆ ให้ Handler เรียกใช้งาน
 // ฟังก์ชันดึงข้อมูล User
 func (s *UserService) GetUserByID(ctx context.Context, id string) (repository.User, error) {
-	// 1. (Business Logic): ตรวจสอบความถูกต้องเบื้องต้น
-	if id == "" {
-		// ถ้าไม่มี ID ส่งมา ให้ตีกลับทันที
-		return repository.User{}, errors.New("user id cannot be empty")
-	}
 
 	// เรียกใช้งาน Repository เพื่อไปดึงข้อมูลจาก Database
 	// ฟังก์ชัน FindUserByID นี้คือตัวที่เราเขียนจัดการแปลง String เป็น UUID ไว้ใน repo
@@ -80,9 +75,6 @@ func (s *UserService) UpdateUser(ctx context.Context, id string, email string, f
 }
 
 func (s *UserService) SoftDeleteUser(ctx context.Context, id string) error {
-	if id == "" {
-		return errors.New("id cannot be empty")
-	}
 	err := s.userRepo.SoftDeleteUser(ctx, id)
 	if err != nil {
 		log.Printf("[Error] SoftDeleteUser failed: %v", err)

@@ -1,11 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"net/mail"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/jnarongdech/go-backend-api/internal/service"
 	constants "github.com/jnarongdech/go-backend-api/pkg/consts"
 	"github.com/jnarongdech/go-backend-api/pkg/errs"
@@ -37,6 +35,14 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
 
+// GetProfileHandler godoc
+// @Summary      Get data by ID...
+// @Description  Retrieves a single item by its ID.
+// @Tags         Users
+// @Produce      json
+// @Param        id path string true "User ID"
+// @Success      200 {object} map[string]interface{}
+// @Router       /api/v1/products/{id} [get]
 func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 	// 1. ดึง userID จาก Context (ถ้าผ่าน Auth Middleware มา) หรือจาก Query/Param
 	// userID := c.Locals("userID").(string)
@@ -60,12 +66,6 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 	})
 }
 
-// @Summary Create new data...
-// @Tags Users
-// @Accept json
-// @Param request body CreateUserRequest true "Data to create"
-// @Success 201 {object} map[string]interface{}
-// @Router /api/v1/users [post]
 func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 	// สร้างตัวแปรมารอรับข้อมูล
 	var req CreateUserRequest
@@ -105,55 +105,38 @@ func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 	})
 }
 
-// @Summary Update data...
-// @Tags Users
-// @Accept json
-// @Param request body UpdateUserRequest true "New data to update"
-// @Success 200 {object} map[string]interface{}
-// @Router /api/v1/users [patch]
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	var req UpdateUserRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.ErrorResponse(c, errors.New(""))
+		return errs.NewBadRequest(constants.ErrInvalidJSONFormat, err)
 	}
 
-	// validator email
-	_, err := mail.ParseAddress(req.Email)
+	if err := validate.Struct(req); err != nil {
+		return errs.NewBadRequest(constants.ErrInvalidFormatOrIncompleteData, err)
+	}
+
+	user, err := h.userService.UpdateUser(c.Context(), req.ID, req.Email, req.FullName)
 	if err != nil {
-		return response.ErrorResponse(c, errs.NewBadRequest("Invalid email format: ", err))
+		return err
 	}
 
-	user, errUpdate := h.userService.UpdateUser(c.Context(), req.ID, req.Email, req.FullName)
-	if err != nil {
-		return response.ErrorResponse(c, errs.NewInternal("Unable to update user: ", errUpdate))
-	}
-
-	return response.SuccessResponse(c, fiber.StatusOK, "Updated Successfully!", user)
+	return response.SuccessResponse(c, fiber.StatusOK, "Updated!", user)
 }
 
-// @Summary Delete data...
-// @Tags Users
-// @Param request body SoftDeleteRequest true "Soft delete data to disabled user"
-// @Success 200 {object} map[string]interface{}
-// @Router /api/v1/users [delete]
 func (h *UserHandler) SoftDeleteUser(c *fiber.Ctx) error {
 	var req SoftDeleteRequest
 	if err := c.BodyParser(&req); err != nil {
-		return response.ErrorResponse(c, errs.NewBadRequest(constants.ErrInvalidJSONFormat, err))
+		return errs.NewBadRequest(constants.ErrInvalidJSONFormat, err)
 	}
 
-	if req.ID == "" {
-		return response.ErrorResponse(c, errs.NewBadRequest("ID cannot be empty:", nil))
-	}
-
-	if _, err := uuid.Parse(req.ID); err != nil {
-		return response.ErrorResponse(c, errs.NewBadRequest("Invalid ID format (UUID required).", nil))
+	if req.ID != "" {
+		return errs.NewBadRequest("Invalid ID format (UUID required).", nil)
 	}
 
 	errSoftDel := h.userService.SoftDeleteUser(c.Context(), req.ID)
 	if errSoftDel != nil {
-		return response.ErrorResponse(c, errs.NewInternal("Unable to delete user: ", errSoftDel))
+		return errSoftDel
 	}
 
-	return response.SuccessResponse(c, fiber.StatusOK, "Disabled Successfully!", nil)
+	return response.SuccessResponse(c, fiber.StatusOK, "Disabled!", nil)
 }

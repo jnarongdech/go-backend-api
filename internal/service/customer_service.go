@@ -10,81 +10,62 @@ import (
 	"github.com/jnarongdech/go-backend-api/internal/dto"
 	"github.com/jnarongdech/go-backend-api/internal/repository"
 	constants "github.com/jnarongdech/go-backend-api/pkg/consts"
+	"github.com/jnarongdech/go-backend-api/pkg/errs"
+	"github.com/jnarongdech/go-backend-api/pkg/utils"
 )
 
-type ICustomerRepository interface {
+// 1. Repository Interface
+type CustomerRepository interface {
 	GetCustomerByID(ctx context.Context, id uuid.UUID) (repository.Customer, error)
 	CreateCustomer(ctx context.Context, arg repository.CreateCustomerParams) (repository.Customer, error)
 	UpdateCustomer(ctx context.Context, arg repository.UpdateCustomerParams) error
+	ExecTx(ctx context.Context, fn func(*repository.Queries) error) error
 }
 
-type CustomerService struct {
-	store ICustomerRepository
+// 2. Service Interface (เพื่อให้ Handler เรียกใช้)
+type CustomerService interface {
+	GetCustomerByID(ctx context.Context, id uuid.UUID) (repository.Customer, error)
+	CreateCustomer(ctx context.Context, req dto.CreateCustomerRequest) (repository.Customer, error)
+	UpdateCustomer(ctx context.Context, req dto.UpdateCustomerRequest) error
 }
 
-// Constructor
-func NewCustomerService(store ICustomerRepository) *CustomerService {
-	return &CustomerService{store: store}
+// 3. Struct ตัวพิมพ์เล็ก (Private Struct)
+type customerService struct {
+	store CustomerRepository
 }
 
-func (s *CustomerService) GetCustomerByID(ctx context.Context, id uuid.UUID) (repository.Customer, error) {
-	if id == uuid.Nil {
-		return repository.Customer{}, errors.New(constants.ErrCustomerIDEmpty)
-	}
+// 4. Constructor คืนค่าเป็น Interface
+func NewCustomerService(store CustomerRepository) CustomerService {
+	return &customerService{store: store}
+}
+
+func (s *customerService) GetCustomerByID(ctx context.Context, id uuid.UUID) (repository.Customer, error) {
 
 	customer, err := s.store.GetCustomerByID(ctx, id)
 	if err != nil {
-
 		// log for dev check
 		log.Printf("[ERROR] GetCustomerByID failed for id %s: %v", id, err)
 
 		if errors.Is(err, sql.ErrNoRows) {
-			// ถ้าใช่ ให้ส่งข้อความที่เข้าใจง่ายกลับไป
-			return repository.Customer{}, errors.New("Not found customer")
+			return repository.Customer{}, errs.NewNotFound(constants.ErrResourceNotFound, err)
 		}
 
-		return repository.Customer{}, errors.New("An error has occurred, please try again.")
+		return repository.Customer{}, errs.NewInternal(constants.ErrInternalServer, err)
 	}
 
 	return customer, nil
 }
 
-func (s *CustomerService) CreateCustomer(ctx context.Context, req dto.CreateCustomerRequest) (repository.Customer, error) {
-	if req.Name == "" {
-		return repository.Customer{}, errors.New("Customer name cannot be empty.")
-	}
-	if req.Email == "" {
-		return repository.Customer{}, errors.New("Customer email cannot be empty.")
-	}
-
-	// Convert the DTO into Repository parameters.
+func (s *customerService) CreateCustomer(ctx context.Context, req dto.CreateCustomerRequest) (repository.Customer, error) {
 	arg := repository.CreateCustomerParams{
-		Name:  req.Name,
-		Email: req.Email,
-		Phone: sql.NullString{
-			String: req.Phone,
-			Valid:  req.Phone != "",
-		},
-		CompanyName: sql.NullString{
-			String: req.CompanyName,
-			Valid:  req.CompanyName != "",
-		},
-		Address: sql.NullString{
-			String: req.Address,
-			Valid:  req.Address != "",
-		},
-		City: sql.NullString{
-			String: req.City,
-			Valid:  req.City != "",
-		},
-		PostalCode: sql.NullString{
-			String: req.PostalCode,
-			Valid:  req.PostalCode != "",
-		},
-		Country: sql.NullString{
-			String: req.Country,
-			Valid:  req.Country != "",
-		},
+		Name:        req.Name,
+		Email:       req.Email,
+		Phone:       utils.ValueToNullString(req.Phone),
+		CompanyName: utils.ValueToNullString(req.CompanyName),
+		Address:     utils.ValueToNullString(req.Address),
+		City:        utils.ValueToNullString(req.City),
+		PostalCode:  utils.ValueToNullString(req.PostalCode),
+		Country:     utils.ValueToNullString(req.Country),
 	}
 
 	// Pass the (converted) arg to the Repository for handling.
@@ -93,51 +74,23 @@ func (s *CustomerService) CreateCustomer(ctx context.Context, req dto.CreateCust
 		log.Printf("[ERROR] CreateCustomer failed: %v", err)
 
 		// You could add a check for duplicate emails here.
-		return repository.Customer{}, errors.New("Unable to create customer data.")
+		return repository.Customer{}, errs.NewInternal(constants.ErrInternalServer, err)
 	}
 
 	return customer, nil
 }
 
-func (s *CustomerService) UpdateCustomer(ctx context.Context, req dto.UpdateCustomerRequest) error {
-	if req.ID == uuid.Nil {
-		return errors.New(constants.ErrCustomerIDEmpty)
-	}
-	if req.Name == "" {
-		return errors.New(constants.ErrCustomerNameEmpty)
-	}
-	if req.Email == "" {
-		return errors.New(constants.ErrCustomerEmailEmpty)
-	}
-
+func (s *customerService) UpdateCustomer(ctx context.Context, req dto.UpdateCustomerRequest) error {
 	arg := repository.UpdateCustomerParams{
-		ID:    req.ID,
-		Name:  req.Name,
-		Email: req.Email,
-		Phone: sql.NullString{
-			String: req.Phone,
-			Valid:  req.Phone != "",
-		},
-		CompanyName: sql.NullString{
-			String: req.CompanyName,
-			Valid:  req.CompanyName != "",
-		},
-		Address: sql.NullString{
-			String: req.Address,
-			Valid:  req.Address != "",
-		},
-		City: sql.NullString{
-			String: req.City,
-			Valid:  req.City != "",
-		},
-		PostalCode: sql.NullString{
-			String: req.PostalCode,
-			Valid:  req.PostalCode != "",
-		},
-		Country: sql.NullString{
-			String: req.Country,
-			Valid:  req.Country != "",
-		},
+		ID:          req.ID,
+		Name:        req.Name,
+		Email:       req.Email,
+		Phone:       utils.ValueToNullString(req.Phone),
+		CompanyName: utils.ValueToNullString(req.CompanyName),
+		Address:     utils.ValueToNullString(req.Address),
+		City:        utils.ValueToNullString(req.City),
+		PostalCode:  utils.ValueToNullString(req.PostalCode),
+		Country:     utils.ValueToNullString(req.Country),
 	}
 
 	err := s.store.UpdateCustomer(ctx, arg)
@@ -146,7 +99,7 @@ func (s *CustomerService) UpdateCustomer(ctx context.Context, req dto.UpdateCust
 
 		// customer not found
 		if errors.Is(err, sql.ErrNoRows) {
-			return errors.New(constants.ErrCustomerNotFound)
+			return errs.NewNotFound(constants.ErrCustomerNotFound, err)
 		}
 
 		// duplicate email
@@ -154,7 +107,7 @@ func (s *CustomerService) UpdateCustomer(ctx context.Context, req dto.UpdateCust
 		// 	return errors.New("This email is already taken.")
 		// }
 
-		return errors.New(constants.ErrUnableUpdateData)
+		return errs.NewInternal(constants.ErrInternalServer, err)
 	}
 
 	return nil
